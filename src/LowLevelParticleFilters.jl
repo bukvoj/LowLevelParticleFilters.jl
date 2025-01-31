@@ -41,6 +41,7 @@ include("utils.jl")
 include("smoothing.jl")
 include("plotting.jl")
 include("ekf.jl")
+include("iekf.jl") #rm this to get the original
 include("sq_kalman.jl")
 include("imm.jl")
 
