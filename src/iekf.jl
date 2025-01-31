@@ -45,7 +45,7 @@ function correct!(kf::AbstractKalmanFilter,  measurement_model::IEKFMeasurementM
     maxiters = 10 # TODO make this a parameter
     ϵ = 1e-6 # TODO make this a parameter
 
-    C = zeros(measurement_model.ny, kf.nx)
+    C = zeros(measurement_model.ny, length(x))
 
     i = 1
     while true
