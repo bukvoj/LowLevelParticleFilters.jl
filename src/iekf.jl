@@ -62,7 +62,7 @@ function correct!(kf::AbstractKalmanFilter,  measurement_model::IEKFMeasurementM
         Sᵪ  = cholesky(Symmetric(S); check=false)
         issuccess(Sᵪ) || error("Cholesky factorization of innovation covariance failed, got S = ", S)
         K = (R*C')/Sᵪ
-        xi += step*(x-xi+vec(K)*(e-C*(x-xi)))
+        xi += vec(step*(x-xi+K*(e-C*(x-xi))))
         if sum(abs, xi-prev) < ϵ || i >= maxiters
             kf.x = xi
             kf.R = symmetrize((I - K*C)*R) # WARNING against I .- A
