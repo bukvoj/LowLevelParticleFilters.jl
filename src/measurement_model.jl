@@ -364,3 +364,100 @@ function (model::LinearMeasurementModel)(y,x,u,p,t)
 end
 
 measurement(model::LinearMeasurementModel) = model
+
+
+
+
+# START OF MEASUREMENT MODELS
+## EKF measurement model =======================================================
+
+struct IEKFMeasurementModel{IPM,MT,RT,CJ,CAT} <: AbstractMeasurementModel
+    measurement::MT
+    R2::RT
+    ny::Int
+    Cjac::CJ
+    step::Real # (0.,1.) step size in the gauss-newton method
+    cache::CAT
+end
+
+isinplace(::IEKFMeasurementModel{IPM}) where IPM = IPM
+has_oop(::IEKFMeasurementModel{IPM}) where IPM = !IPM
+
+"""
+    IEKFMeasurementModel{IPM}(measurement, R2, ny, Cjac, cache = nothing)
+
+A measurement model for the Iterated Extended Kalman Filter.
+
+# Arguments:
+- `IPM`: A boolean indicating if the measurement function is inplace
+- `measurement`: The measurement function `y = h(x, u, p, t)`
+- `R2`: The measurement noise covariance matrix
+- `ny`: The number of measurement variables
+- `Cjac`: The Jacobian of the measurement function `Cjac(x, u, p, t)`. If none is provided, ForwardDiff will be used.
+- `step`: The step size in the Gauss-Newton method
+- `cache`: A cache for the Jacobian
+"""
+IEKFMeasurementModel{IPM}(
+    measurement,
+    R2,
+    ny,
+    Cjac,
+    step = 1.0,
+    cache = nothing,
+) where {IPM} = IEKFMeasurementModel{
+    IPM,
+    typeof(measurement),
+    typeof(R2),
+    typeof(Cjac),
+    typeof(cache),
+}(
+    measurement,
+    R2,
+    ny,
+    Cjac,
+    step,
+    cache,
+)
+
+"""
+    IEKFMeasurementModel{T,IPM}(measurement::M, R2; nx, ny, Cjac = nothing)
+
+- `T` is the element type used for arrays
+- `IPM` is a boolean indicating if the measurement function is inplace
+"""
+function IEKFMeasurementModel{T,IPM}(
+    measurement::M,
+    R2;
+    nx,
+    ny,
+    step = 1.0,
+    Cjac = nothing,
+) where {T,IPM,M}
+
+    
+    if Cjac === nothing
+        if IPM
+            outy = zeros(T, ny)
+            jacy = zeros(T, ny, nx)
+            Cjac = (x,u,p,t) -> ForwardDiff.jacobian!(jacy, (y,x)->measurement(y,x,u,p,t), outy, x)
+        else
+            Cjac = (x,u,p,t) -> ForwardDiff.jacobian(x->measurement(x,u,p,t), x)
+        end
+    end
+
+
+    IEKFMeasurementModel{
+        IPM,
+        typeof(measurement),
+        typeof(R2),
+        typeof(Cjac),
+        typeof(nothing),
+    }(
+        measurement,
+        R2,
+        ny,
+        Cjac,
+        step,
+        nothing,
+    )
+end
