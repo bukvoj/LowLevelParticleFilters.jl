@@ -36,14 +36,11 @@ end
 
 function correct!(kf::AbstractKalmanFilter,  measurement_model::IEKFMeasurementModel{IPM}, u, y, p = parameters(kf), t::Real = index(kf); R2 = get_mat(measurement_model.R2, kf.x, u, p, t)) where IPM
     (; x,R) = kf
-    (; measurement, Cjac, step) = measurement_model
+    (; measurement, Cjac, step, maxiters, epsilon) = measurement_model
     
     
     # TODO implement the iterations 
     xi = copy(x)
-
-    maxiters = 10 # TODO make this a parameter
-    ϵ = 1e-6 # TODO make this a parameter
 
     C = zeros(measurement_model.ny, length(x))
 
@@ -63,7 +60,7 @@ function correct!(kf::AbstractKalmanFilter,  measurement_model::IEKFMeasurementM
         issuccess(Sᵪ) || error("Cholesky factorization of innovation covariance failed, got S = ", S)
         K = (R*C')/Sᵪ
         xi += vec(step*(x-xi+K*(e-C*(x-xi))))
-        if sum(abs, xi-prev) < ϵ || i >= maxiters
+        if sum(abs, xi-prev) < epsilon || i >= maxiters
             kf.x = xi
             kf.R = symmetrize((I - K*C)*R) # WARNING against I .- A
             ll = extended_logpdf(SimpleMvNormal(PDMat(S, Sᵪ)), e)[]# - 1/2*logdet(S) # logdet is included in logpdf

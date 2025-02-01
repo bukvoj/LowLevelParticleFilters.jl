@@ -377,6 +377,8 @@ struct IEKFMeasurementModel{IPM,MT,RT,CJ,CAT} <: AbstractMeasurementModel
     ny::Int
     Cjac::CJ
     step::Real # (0.,1.) step size in the gauss-newton method
+    maxiters::Int # maximum number of iterations
+    epsilon::Real # convergence criterion
     cache::CAT
 end
 
@@ -403,6 +405,8 @@ IEKFMeasurementModel{IPM}(
     ny,
     Cjac,
     step = 1.0,
+    maxiters = 10,
+    epsilon = 1e-8,
     cache = nothing,
 ) where {IPM} = IEKFMeasurementModel{
     IPM,
@@ -416,6 +420,8 @@ IEKFMeasurementModel{IPM}(
     ny,
     Cjac,
     step,
+    maxiters,
+    epsilon,
     cache,
 )
 
@@ -431,6 +437,8 @@ function IEKFMeasurementModel{T,IPM}(
     nx,
     ny,
     step = 1.0,
+    maxiters = 10,
+    epsilon = 1e-8,
     Cjac = nothing,
 ) where {T,IPM,M}
 
@@ -458,6 +466,8 @@ function IEKFMeasurementModel{T,IPM}(
         ny,
         Cjac,
         step,
+        maxiters,
+        epsilon,
         nothing,
     )
 end
