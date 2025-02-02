@@ -397,6 +397,8 @@ A measurement model for the Iterated Extended Kalman Filter.
 - `ny`: The number of measurement variables
 - `Cjac`: The Jacobian of the measurement function `Cjac(x, u, p, t)`. If none is provided, ForwardDiff will be used.
 - `step`: The step size in the Gauss-Newton method
+- `maxiters`: The maximum number of iterations of the Gauss-Newton method inside the IEKF
+- `epsilon`: The convergence criterion for the Gauss-Newton method
 - `cache`: A cache for the Jacobian
 """
 IEKFMeasurementModel{IPM}(

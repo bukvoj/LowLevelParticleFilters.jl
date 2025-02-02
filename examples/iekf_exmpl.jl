@@ -18,6 +18,14 @@ function example_measurement(x,u,p,t)
     [atan((x[2]-1.5)/(x[1]-0)), atan((x[2]-0)/(x[1]-0))]
 end
 
+function example_dynamics(x,u,p,t)
+    0.5 .*x .+ 25 .*x ./ (1 .+ x.^2) .+ 8 .*cos(1.2.*(t-1))
+end
+
+function example_measurement(x,u,p,t)
+    x.^2 ./20
+end
+
 
 # Define the process and measurement noise
 σ_ω = 1 * [1.0 0.0; 0.0 1.0] # Process noise Q
@@ -81,3 +89,24 @@ iekfrms = [rms(iekferr[t,:]) for t in 1:Tmax]
 plot(1:Tmax, ukfrms, label="UKF", xlabel="Time", ylabel="RMSE", title="RMSE vs Time", lw=2)
 plot!(1:Tmax, ekfrms, label="EKF", lw=2)
 plot!(1:Tmax, iekfrms, label="IEKF", lw=2)
+
+
+
+
+# Benchmarks:
+using BenchmarkTools
+x = [1.5,1.5]
+P = 0.1 * [1.0 0.0; 0.0 1.0]
+ukf = UnscentedKalmanFilter(example_dynamics, example_measurement, σ_ω, σ_v, MvNormal(x,P); nu=1, ny=2, p=nothing)
+iekf = IteratedExtendedKalmanFilter(example_dynamics, example_measurement, σ_ω, σ_v, MvNormal(x,P); nu=1, ny=2, p=nothing, step=steplength)
+ekf = ExtendedKalmanFilter(example_dynamics, example_measurement, σ_ω, σ_v, MvNormal(x,P); nu=1, ny=2, p=nothing)
+
+y = example_measurement(x,nothing,nothing,1) + 100 * rand(measnoise)
+
+@btime correct!(iekf, nothing,y,nothing,1)
+@btime correct!(ekf, nothing,y,nothing,1)
+@btime correct!(ukf, nothing,y,nothing,1)
+
+@benchmark correct!(iekf, nothing,y,nothing,1)
+@benchmark correct!(ekf, nothing,y,nothing,1)
+@benchmark correct!(ukf, nothing,y,nothing,1)

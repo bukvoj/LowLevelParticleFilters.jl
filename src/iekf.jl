@@ -1,16 +1,37 @@
+"""
+    IteratedExtendedKalmanFilter(kf, dynamics, measurement; Ajac, Cjac, step, maxiters, epsilon)
+    IteratedExtendedKalmanFilter(dynamics, measurement, R1,R2,d0=SimpleMvNormal(Matrix(R1)); nu::Int, ny=size(R2,1), Cjac = nothing, step = 1.0, maxiters=10, epsilon=1e-8)
+
+A nonlinear state estimator propagating uncertainty using linearization. Returns an `ExtendedKalmanFilter` object but with Gauss-Newton based iterating measurement correction step.
+
+The constructor to the extended Kalman filter takes dynamics and measurement functions, and either covariance matrices, or a [`KalmanFilter`](@ref). If the former constructor is used, the number of inputs to the system dynamics, `nu`, must be explicitly provided with a keyword argument.
+
+By default, the filter will internally linearize the dynamics using ForwardDiff. User provided Jacobian functions can be provided as keyword arguments `Ajac` and `Cjac`. These functions should have the signature `(x,u,p,t)::AbstractMatrix` where `x` is the state, `u` is the input, `p` is the parameters, and `t` is the time.
+
+The dynamics and measurement function are of the following form
+```
+x(t+1) = dynamics(x, u, p, t) + w
+y      = measurement(x, u, p, t) + e
+```
+where `w ~ N(0, R1)`, `e ~ N(0, R2)` and `x(0) ~ d0`
+
+See also [`UnscentedKalmanFilter`](@ref) which is more robust than `IteratedExtendedKalmanFilter`. See [`KalmanFilter`](@ref) for detailed instructions on how to set up a Kalman filter `kf`.
+"""
+IteratedExtendedKalmanFilter
+
 function IteratedExtendedKalmanFilter(dynamics, measurement_model::AbstractMeasurementModel, R1,d0=SimpleMvNormal(Matrix(R1)); nu=0, ny=measurement_model.ny, Ts = 1.0, p = NullParameters(), α = 1.0, check = true, Ajac = nothing)
     return ExtendedKalmanFilter(dynamics, measurement_model::AbstractMeasurementModel, R1,d0=SimpleMvNormal(Matrix(R1)); nu=0, ny=measurement_model.ny, Ts = 1.0, p = NullParameters(), α = 1.0, check = true, Ajac = nothing)
 end
 
-function IteratedExtendedKalmanFilter(dynamics, measurement, R1,R2,d0=SimpleMvNormal(Matrix(R1)); nu::Int, ny=size(R2,1), Cjac = nothing, step = 1.0, kwargs...)
+function IteratedExtendedKalmanFilter(dynamics, measurement, R1,R2,d0=SimpleMvNormal(Matrix(R1)); nu::Int, ny=size(R2,1), Cjac = nothing, step = 1.0, maxiters=10, epsilon=1e-8, kwargs...)
     IPM = !has_oop(measurement)
     T = promote_type(eltype(R1), eltype(R2), eltype(d0))
     nx = size(R1,1)
-    measurement_model = IEKFMeasurementModel{T, IPM}(measurement, R2; nx, ny, Cjac, step)
+    measurement_model = IEKFMeasurementModel{T, IPM}(measurement, R2; nx, ny, Cjac, step, maxiters, epsilon)
     return ExtendedKalmanFilter(dynamics, measurement_model, R1, d0; nu, kwargs...)
 end
 
-function IteratedExtendedKalmanFilter(kf, dynamics, measurement; Ajac = nothing, Cjac = nothing, step = 1.0)
+function IteratedExtendedKalmanFilter(kf, dynamics, measurement; Ajac = nothing, Cjac = nothing, step = 1.0, maxiters = 10, epsilon = 1e-8)
     IPD = !has_oop(dynamics)
     if measurement isa AbstractMeasurementModel
         measurement_model = measurement
@@ -18,7 +39,7 @@ function IteratedExtendedKalmanFilter(kf, dynamics, measurement; Ajac = nothing,
     else
         IPM = has_ip(measurement)
         T = promote_type(eltype(kf.R1), eltype(kf.R2), eltype(kf.d0))
-        measurement_model = IEKFMeasurementModel{T, IPM}(measurement, kf.R2; kf.nx, kf.ny, Cjac, step)
+        measurement_model = IEKFMeasurementModel{T, IPM}(measurement, kf.R2; kf.nx, kf.ny, Cjac, step, maxiters, epsilon)
     end
     if Ajac === nothing
         if IPD
