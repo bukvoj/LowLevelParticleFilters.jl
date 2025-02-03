@@ -396,9 +396,9 @@ A measurement model for the Iterated Extended Kalman Filter.
 - `R2`: The measurement noise covariance matrix
 - `ny`: The number of measurement variables
 - `Cjac`: The Jacobian of the measurement function `Cjac(x, u, p, t)`. If none is provided, ForwardDiff will be used.
-- `step`: The step size in the Gauss-Newton method
+- `step`: The step size in the Gauss-Newton method. Should be Float64 between 0 and 1.
 - `maxiters`: The maximum number of iterations of the Gauss-Newton method inside the IEKF
-- `epsilon`: The convergence criterion for the Gauss-Newton method
+- `epsilon`: The convergence criterion for the Gauss-Newton method inside the IEKF
 - `cache`: A cache for the Jacobian
 """
 IEKFMeasurementModel{IPM}(
@@ -428,7 +428,7 @@ IEKFMeasurementModel{IPM}(
 )
 
 """
-    IEKFMeasurementModel{T,IPM}(measurement::M, R2; nx, ny, Cjac = nothing)
+    IEKFMeasurementModel{T,IPM}(measurement::M, R2; nx, ny, Cjac = nothing, step = 1.0, maxiters = 10, epsilon = 1e-8)
 
 - `T` is the element type used for arrays
 - `IPM` is a boolean indicating if the measurement function is inplace
@@ -438,10 +438,10 @@ function IEKFMeasurementModel{T,IPM}(
     R2;
     nx,
     ny,
+    Cjac = nothing,
     step = 1.0,
     maxiters = 10,
     epsilon = 1e-8,
-    Cjac = nothing,
 ) where {T,IPM,M}
 
     
@@ -455,6 +455,9 @@ function IEKFMeasurementModel{T,IPM}(
         end
     end
 
+    if step < 0 || step > 1
+        error("IEKF step size should be between 0 and 1")
+    end
 
     IEKFMeasurementModel{
         IPM,
