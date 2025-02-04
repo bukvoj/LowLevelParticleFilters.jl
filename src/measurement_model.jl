@@ -367,9 +367,7 @@ measurement(model::LinearMeasurementModel) = model
 
 
 
-
-# START OF MEASUREMENT MODELS
-## EKF measurement model =======================================================
+# IEKF measurement model =======================================================
 
 struct IEKFMeasurementModel{IPM,MT,RT,CJ,CAT} <: AbstractMeasurementModel
     measurement::MT

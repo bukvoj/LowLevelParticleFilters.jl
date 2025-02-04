@@ -70,6 +70,15 @@ function correct!(kf::AbstractKalmanFilter,  measurement_model::IEKFMeasurementM
 
     C = zeros(measurement_model.ny, length(x))
 
+    if IPM
+        pred_err = zeros(length(y))
+        measurement(e, xi, u, p, t)
+        pred_err .= y .- pred_err
+    else
+        pred_err = y .- measurement(xi, u, p, t)
+    end
+
+
     i = 1
     while true
         prev = copy(xi)
@@ -89,8 +98,8 @@ function correct!(kf::AbstractKalmanFilter,  measurement_model::IEKFMeasurementM
         if sum(abs, xi-prev) < epsilon || i >= maxiters
             kf.x = xi
             kf.R = symmetrize((I - K*C)*R) # WARNING against I .- A
-            ll = extended_logpdf(SimpleMvNormal(PDMat(S, Sᵪ)), e)[]# - 1/2*logdet(S) # logdet is included in logpdf
-            return (; ll, e, S, Sᵪ, K)
+            ll = extended_logpdf(SimpleMvNormal(PDMat(S, Sᵪ)), pred_err)[]# - 1/2*logdet(S) # logdet is included in logpdf
+            return (; ll, pred_err, S, Sᵪ, K)
         end
         i += 1
     end
