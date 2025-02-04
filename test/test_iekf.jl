@@ -36,7 +36,7 @@ kf2 = KalmanFilter(ss(A, B, C, 0, 1), R1, R2, d0, α=1.01)
 @test kf2.d0 == kf.d0
 
 ekf = LLPF.IteratedExtendedKalmanFilter(kf, dynamics, measurement)
-ekf2 = LLPF.IteratedExtendedKalmanFilter(dynamics, measurement, R1, R2, d0, α=1.01, nu=nu)
+ekf2 = LLPF.IteratedExtendedKalmanFilter(dynamics, measurement, R1, R2, d0, α=1.01, nu=nu, maxiters=20, step=0.5, epsilon=1e-6)
 ukf = LLPF.UnscentedKalmanFilter(dynamics, measurement, R1, R2, d0, nu=nu, ny=ny)
 @test ekf2.kf.R1 == ekf.kf.R1
 @test ekf2.kf.R2 == ekf.kf.R2
@@ -44,6 +44,13 @@ ukf = LLPF.UnscentedKalmanFilter(dynamics, measurement, R1, R2, d0, nu=nu, ny=ny
 @test ukf.R1 == ekf.kf.R1
 @test ukf.R2 == ekf.kf.R2
 @test ukf.d0 == ekf.kf.d0
+
+@test ekf.maxiters == 10
+@test ekf.step == 1.0
+@test ekf.epsilon == 1e-8
+@test ekf2.maxiters == 20
+@test ekf2.step == 0.5
+@test ekf2.epsilon == 1e-6
 
 
 @test ekf.measurement_model.Cjac([0,0],[0],[0],0) == C
@@ -146,6 +153,56 @@ xT3,RT3,ll3 = smooth(sol3, ukf, u, y)
 
 @test norm(reduce(hcat, x .- xT)) < norm(reduce(hcat, x .- sol3.x))
 @test norm(reduce(hcat, x .- xT)) < norm(reduce(hcat, x .- sol3.xt))
+
+
+
+
+# More tests:
+h(x,u,p,t) = [1.0/x[1]]
+hjac(x,u,p,t) = hcat(-1.0/x[1]^2)
+h2(x,u,p,t) = [u./x[1]]
+h2jac(x,u,p,t) = hcat(-u./x[1]^2)
+
+function f(x,u,p,t)
+    for i in 1:length(x)
+        x[i] = x[i]^i
+    end
+    x
+end
+
+
+Q = hcat(1.0)
+RR = hcat(1.0) * 2
+d0 = MvNormal([5.0],1.0*I)
+iekf2 = LLPF.IteratedExtendedKalmanFilter(f, h,Q,RR,d0; nu = 0)
+iekf = LLPF.IteratedExtendedKalmanFilter(f, h,Q,RR,d0; Cjac=hjac, nu = 0)
+
+sol = correct!(iekf, 100,[1/4],0,0)
+sol2 = correct!(iekf2, 100,[1/4],0,0)
+
+# Check that the solution makes sense
+@test iekf.x[1] < 5
+@test iekf.x[1] > 4
+@test iekf.R[1] < 1 # Test that P has decreased
+# Test that the two methods give the same results
+@test iekf.x ≈ iekf2.x
+@test iekf.R ≈ iekf2.R
+
+iekf = LLPF.IteratedExtendedKalmanFilter(f, h2,Q,RR,d0; nu = 1)
+iekf2 = LLPF.IteratedExtendedKalmanFilter(f, h2,Q,RR,d0; Cjac=h2jac, nu = 1)
+
+sol = correct!(iekf, 100,[100/4],0,0)
+sol2 = correct!(iekf2, 100,[100/4],0,0)
+
+# Check that the solution makes sense
+@test iekf.x[1] < 5
+@test iekf.x[1] > 4
+@test iekf.R[1] < 1 # Test that P has decreased
+# Test that the two methods give the same results
+@test iekf.x ≈ iekf2.x
+@test iekf.R ≈ iekf2.R
+
+
 
 
 
